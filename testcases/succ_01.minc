@@ -1,0 +1,7 @@
+num main  ()
+{
+    %% there is no error in this code.
+%*
+    The block comment should be excluded in the parse tree
+*%
+}

@@ -1,0 +1,21 @@
+Success: no syntax error is found.
+
+Following is the indentation-updated source code:
+=================================================
+num main()
+{
+    num x;
+    num y;
+    x <- x + 1;
+    {
+        bool x;
+        num[] y;
+        x <- x + 1;
+        x <- ( x + 1 ) * 2;
+        x <- x.size and y;
+        x <- x[ x + 1 ];
+        x <- new bool [ x.size ];
+        x <- new num [ x.size ];
+    }
+    x <- ( x + 1 ) * 2;
+}

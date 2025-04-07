@@ -1,0 +1,17 @@
+num main  ( void y ) 
+{
+    num x  ;
+      num y  ;
+    x <- x + 1 ;
+    {
+      bool x  ;
+        void y  
+      x <- x + 1 ;
+      x <- ( x + 1 ) * 2;
+      x <- x . size and y;
+      x <- x [ x + 1 ];
+      x <- new bool [ x.size ];
+      x <- new num [ x.size ];
+    }
+    x <- ( x + 1 ) * 2;
+}

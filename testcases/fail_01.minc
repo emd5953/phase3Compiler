@@ -1,0 +1,7 @@
+nu main ()
+{
+    %% there is no error in this code.
+%*
+    The block statement should not be included into the parse tree
+*%
+}

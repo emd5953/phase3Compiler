@@ -1,0 +1,30 @@
+Success: no syntax error is found.
+
+Following is the indentation-updated source code:
+=================================================
+bool myfunc()
+{
+    return ( 1 );
+}
+
+bool myfunc(num a)
+{
+}
+
+bool myfunc(num a, num[] b)
+{
+}
+
+bool myfunc(num a, num[] b, bool b)
+{
+}
+
+num main()
+{
+    num x;
+    x <- myfunc(  );
+    x <- myfunc( 1 );
+    x <- myfunc( 1, 2 );
+    x <- myfunc( 1, 2 + x );
+    x <- myfunc( 1, 2 + x, ( x.size + 10 ) * 3.14 );
+}

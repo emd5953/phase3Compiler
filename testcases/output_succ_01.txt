@@ -1,0 +1,7 @@
+Success: no syntax error is found.
+
+Following is the indentation-updated source code:
+=================================================
+num main()
+{
+}

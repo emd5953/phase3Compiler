@@ -1,0 +1,14 @@
+num main  (  ) 
+{
+    num x  ;
+            num x  ;
+    x <- main2();
+    {
+        num x  ;
+        num x  ;
+        x <- 1 + 2 + 3;
+        x <- 1 + 2 + 3;
+        }
+    }
+    x <- 1 + 2 + 3;
+}

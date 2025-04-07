@@ -1,0 +1,19 @@
+Success: no syntax error is found.
+
+Following is the indentation-updated source code:
+=================================================
+num main()
+{
+    x <- x + 1;
+    if ( ( true + 1 ) )
+    {
+        x <- x - 12;
+        x <- x - 12.34;
+    }
+    else
+    {
+        x <- x * 123 / 1234;
+        x <- x * 123.45 / 1234.56;
+    }
+    x <- ( x + 1 ) * 2;
+}

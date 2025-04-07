@@ -1,0 +1,79 @@
+num main  (  ) 
+{
+    num x  ;
+            num x  ;
+    x <- main2();
+    {
+        num x  ;
+        num x  ;
+        x <- 1 + 2 + 3;
+        {
+            num x  ;
+            num x  ;
+                    x <- 1 + 2 + 3;
+        }
+        x <- 1 + 2 + 3;
+        {
+            num x  ;
+            num x  ;
+                    x <- 1 + 2 + 3;
+            while ( 1.23 )
+            {
+                if ( a+b ) {
+                    x <- 1 + 2 + 3;
+                    if ( a+b ) {
+                        x <- 1 + 2 + 3;
+                        while ( 1.23 )
+                        {
+                            x <- 1 + 2 + 3;
+                        }
+                        x <- 1 + 2 + 3;
+                    }else{
+                        x <- 1 + 2 + 3;
+                    }
+                    x <- 1 + 2 + 3;
+                }else{
+                    x <- 1 + 2 + 3;
+                    if ( a+b ) {
+                        x <- 1 + 2 + 3;
+                   } else{
+                        x <- 1 + 2 + 3;
+                        while ( 1.23 )
+                        {
+                            x <- 1 + 2 + 3;
+                        }
+                        x <- 1 + 2 + 3;
+                    }
+                    x <- 1 + 2 + 3;
+                }
+                x <- 1 + 2 + 3;
+                while ( 1.23 )
+                {
+                    x <- 1 + 2 + 3;
+                }
+                x <- 1 + 2 + 3;
+                while ( 1.23 )
+                {
+                    x <- 1 + 2 + 3;
+                }
+                x <- 1 + 2 + 3;
+            }
+            x <- 1 + 2 + 3;
+        }
+        x <- 1 + 2 + 3;
+    }
+    x <- 1 + 2 + 3;
+}
+
+bool main2  ( num a ) 
+{
+  return (1);
+}
+
+bool main3 ( num a , num[] b ) 
+{
+}
+
+bool main4 ( num a , num[] b , bool b ) 
+{
+}

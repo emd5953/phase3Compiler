@@ -1,0 +1,10 @@
+bool main  ()
+{
+    num x  ;
+    x <- x + 1 ;
+    x <- 0 - ( x + 1 ) * 2;
+    x <- x . size and y;
+    x <- x [ x + 1 ];
+    x <- new num [ x.size ];
+    num x  ;
+}

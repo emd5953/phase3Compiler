@@ -1,0 +1,242 @@
+Token name      Pattern                                 Token name      Pattern                                         
+========================================================================================================================
+BEGIN           "{"                                     
+END             "}"                                     
+RETURN          "return"                                
+PRINT           "print"                                 
+IF              "if"                                    
+ELSE            "else"                                  
+WHILE           "while"                                 
+LPAREN          "("                                     
+RPAREN          ")"                                     
+LBRACKET        "["                                     
+RBRACKET        "]"                                     
+NUM             "num"                                   
+BOOL            "bool"                                  
+NEW             "new"                                   
+SIZE            "size"                                  
+ASSIGN          "<-"                                    
+RELOP           "<"|">"|"<="|">="|"="|"<>"              
+EXPROP          "+"|"-"|"or"                            
+TERMOP          "*"|"/"|"and"                           
+SEMI            ";"                                     
+COMMA           ","                                     
+DOT             "."                                     
+BOOL_LIT        "true"|"false"                          
+NUM_LIT         [0-9]+("."[0-9]+)?
+IDENT           [a-zA-Z][a-zA-Z0-9_]*
+NEWLINE         \n
+WHITESPACE      [ \t\r]+
+LINECOMMENT     "%%".*
+BLKCOMMENT      "%*"[^]*"*%"
+
+
+
+Grammar                                                                     Description
+========================================================================================================================
+program         -> decl_list                                                                                    declaration of program
+
+decl_list       -> decl_list fun_decl                                                                           declaration of function list
+                 | ϵ
+
+fun_decl        -> type_spec IDENT LPAREN params RPAREN BEGIN local_decls stmt_list END
+
+params          -> param_list                                                                                   parameter list (including empty param)
+                 | ϵ
+
+param_list      -> param_list COMMA param                                                                       parameter list (more than one params)
+                 | param
+
+param           -> type_spec IDENT                                                                              parameter
+
+type_spec       -> prim_type                                                                                    primitive type
+                 | prim_type LBRACKET RBRACKET                                                                  array type
+
+prim_type       -> NUM                                                                                          number type
+                 | BOOL                                                                                         bool type
+
+local_decls     -> local_decls local_decl                                                                       declaration of local variable list
+                 | ϵ
+
+local_decl      -> type_spec IDENT SEMI                                                                         declaration of local variable
+
+stmt_list       -> stmt_list stmt                                                                               statement list
+                 | ϵ
+
+stmt            -> assign_stmt                                                                                  statement
+                 | print_stmt
+                 | return_stmt
+                 | if_stmt
+                 | while_stmt
+                 | compound_stmt
+
+assign_stmt     -> IDENT ASSIGN expr SEMI                                                                       assignment statement (ex: "x = y + 1;" in C )
+
+print_stmt      -> PRINT expr SEMI
+
+return_stmt     -> RETURN expr SEMI
+
+if_stmt         -> IF LPAREN expr RPAREN stmt ELSE stmt
+
+while_stmt      -> WHILE LPAREN expr RPAREN stmt
+
+compound_stmt   -> BEGIN local_decls stmt_list END
+
+args            -> arg_list                                                                                     function call argument list (including empty list)
+                 | ϵ
+
+arg_list        -> arg_list COMMA expr                                                                          function call argument list (more than one argument)
+                 | expr
+
+expr            -> expr EXPROP term                                                                             expr-operation (+,-,or)
+                 | expr RELOP  term                                                                             rel-operation  (<,>,<=,>=,!=,== in C)
+                 | term
+
+term            -> term TERMOP factor                                                                           term-operation (*,/,and)
+                 | factor
+
+factor          -> LPAREN expr RPAREN                                                                           ( ... ) equation
+                 | IDENT                                                                                        value of a variable
+                 | NUM_LIT                                                                                      number value
+                 | BOOL_LIT                                                                                     bool value
+                 | IDENT LPAREN args RPAREN                                                                     function call
+                 | NEW prim_type LBRACKET expr RBRACKET                                                         new array operation (ex: new int[3] in C)
+                 | IDENT LBRACKET expr RBRACKET                                                                 access array elements
+                 | IDENT DOT SIZE                                                                               get array size
+
+
+
+Non-left-recursive grammar of the above grammar
+========================================================================================================================
+      program -> decl_list
+
+    decl_list -> decl_list'
+
+   decl_list' -> fun_decl decl_list'
+               | ϵ
+
+     fun_decl -> type_spec IDENT LPAREN params RPAREN BEGIN local_decls stmt_list END
+
+       params -> param_list
+               | ϵ
+
+   param_list -> param param_list'
+
+  param_list' -> COMMA param param_list'
+               | ϵ
+
+        param -> type_spec IDENT
+
+    type_spec -> prim_type type_spec'
+
+   type_spec' -> LBRACKET RBRACKET
+               | ϵ
+
+    prim_type -> NUM
+               | BOOL
+
+  local_decls -> local_decls'
+
+ local_decls' -> local_decl local_decls'
+               | ϵ
+
+   local_decl -> type_spec IDENT SEMI
+
+    stmt_list -> stmt_list'
+
+   stmt_list' -> stmt stmt_list'
+               | ϵ
+
+         stmt -> assign_stmt
+               | print_stmt
+               | return_stmt
+               | if_stmt
+               | while_stmt
+               | compound_stmt
+
+  assign_stmt -> IDENT ASSIGN expr SEMI
+
+   print_stmt -> PRINT expr SEMI
+
+  return_stmt -> RETURN expr SEMI
+
+      if_stmt -> IF LPAREN expr RPAREN stmt ELSE stmt
+
+   while_stmt -> WHILE LPAREN expr RPAREN stmt
+
+compound_stmt -> BEGIN local_decls stmt_list END
+
+         args -> arg_list
+               | ϵ
+
+     arg_list -> expr arg_list'
+
+    arg_list' -> COMMA expr arg_list'
+               | ϵ
+
+         expr -> term expr'
+
+        expr' -> EXPROP term expr'
+               | RELOP term expr'
+               | ϵ
+
+         term -> factor term'
+
+        term' -> TERMOP factor term'
+               | ϵ
+
+       factor -> IDENT factor'
+               | LPAREN expr RPAREN
+               | NUM_LIT
+               | BOOL_LIT
+               | NEW prim_type LBRACKET expr RBRACKET
+
+      factor' -> LPAREN args RPAREN
+               | LBRACKET expr RBRACKET
+               | DOT SIZE
+               | ϵ
+
+
+
+Hint for the return types of non-terminal functions to build parse tree
+========================================================================================================================
+      program   returns         ParseTree.Program
+    decl_list   returns    List<ParseTree.FuncDecl>
+   decl_list'   returns    List<ParseTree.FuncDecl>
+     fun_decl   returns         ParseTree.FuncDecl
+       params   returns    List<ParseTree.Param>
+   param_list   returns    List<ParseTree.Param>
+  param_list'   returns    List<ParseTree.Param>
+        param   returns         ParseTree.Param
+    type_spec   returns         ParseTree.TypeSpec
+   type_spec'   returns         ParseTree.TypeSpec_     (  TypeSpec_Value for "ϵ"
+                                                        or TypeSpec_Array for "LBRACKET RBRACKET" )
+    prim_type   returns         ParseTree.PrimType      (PrimTypeNum     or  PrimTypeBool)
+  local_decls   returns    List<ParseTree.LocalDecl>
+ local_decls'   returns    List<ParseTree.LocalDecl>
+   local_decl   returns         ParseTree.LocalDecl
+    stmt_list   returns    List<ParseTree.Stmt>
+   stmt_list'   returns    List<ParseTree.Stmt>
+         stmt   returns         ParseTree.Stmt
+  assign_stmt   returns         ParseTree.StmtAssign
+   print_stmt   returns         ParseTree.StmtPrint
+  return_stmt   returns         ParseTree.StmtReturn
+      if_stmt   returns         ParseTree.StmtIf
+   while_stmt   returns         ParseTree.StmtWhile
+compound_stmt   returns         ParseTree.StmtCompound
+         args   returns    List<ParseTree.Arg>
+     arg_list   returns    List<ParseTree.Arg>
+    arg_list'   returns    List<ParseTree.Arg>
+         expr   returns         ParseTree.Expr
+        expr'   returns         ParseTree.Expr_         (Expr_  with different op string for opererations)
+         term   returns         ParseTree.Term
+        term'   returns         ParseTree.Term_         (Term_  with different op string for opererations)
+       factor   returns         ParseTree.Factor        (  FactorIdentExt for "IDENT factor'"
+                                                        or FactorParen for "LPAREN expr RPAREN"
+                                                        or FactorNumLit for "NUM_LIT"
+                                                        or FactorBoolLit for "BOOL_LIT"
+                                                        or FactorNew for "NEW prim_type LBRACKET expr RBRACKET" )
+      factor'   returns         ParseTree.Factor_       (  FactorIdent_ParenArgs for "LPAREN args RPAREN"
+                                                        or  FactorIdent_BrackExpr for "LBRACKET expr RBRACKET"
+                                                        or  FactorIdent_DotSize for "DOT SIZE"
+                                                        or  FactorIdent_Eps for "ϵ" )
