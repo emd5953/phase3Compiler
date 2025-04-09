@@ -215,7 +215,7 @@ public class Parser {
             return new ParseTree.PrimTypeBool();
         }
         throw new Exception("Expected 'num' or 'bool' at line "
-                + _lexer.lineno + ", col " + _token.col);
+                + _lexer.lineno + ", col " + _token.col + ".");
     }
     
     public ParseTree.TypeSpec_ type_spec_prime() throws Exception {
@@ -250,7 +250,7 @@ public class Parser {
             if (_token.type != RPAREN) {
                 // If not RPAREN, throw the custom message
                 throw new Exception("No matching production in params at "
-                                    + _lexer.lineno + ":" + _token.col);
+                                    + _lexer.lineno + ":" + _token.col + ".");
             }
             // otherwise, we do epsilon => return empty list
         }
@@ -346,7 +346,7 @@ public class Parser {
                 return compound_stmt();
             default:
                 throw new Exception("No matching production in stmt at line "
-                        + _lexer.lineno + ", col " + _token.col);
+                        + _lexer.lineno + ", col " + _token.col + ".");
         }
     }
     
@@ -551,7 +551,7 @@ public class Parser {
             // Usually FOLLOW(args) is { RPAREN } (because we do `LPAREN args RPAREN`).
             if (_token.type != RPAREN) {
                 throw new Exception("No matching production in args at "
-                                    + _lexer.lineno + ":" + _token.col);
+                                    + _lexer.lineno + ":" + _token.col + ".");
             }
             // Otherwise ε => no arguments
             return new ArrayList<>();
