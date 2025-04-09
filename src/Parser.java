@@ -178,7 +178,7 @@ public class Parser {
     }
     
     private boolean isInFollowOfDeclList(int tokenType) {
-        // For your grammar, typically just ENDMARKER if program -> decl_list ENDMARKER
+        //  typically just ENDMARKER if program -> decl_list ENDMARKER
         return (tokenType == ENDMARKER);
     }
     
@@ -332,7 +332,6 @@ public class Parser {
     public ParseTree.Stmt stmt() throws Exception {
         switch (_token.type) {
             case IDENT:
-                // (If you wanted to allow function-call-as-statement, you'd detect that here as well.)
                 return assign_stmt();
             case PRINT:
                 return print_stmt();
@@ -577,9 +576,7 @@ public class Parser {
              || t == BOOL_LIT || t == FLOAT_LIT || t == NEW);
     }
     
-    /* ------------------------------------------------------------------
-       tokenToString helper
-       ------------------------------------------------------------------ */
+ 
     private static String tokenToString(int token) {
         switch (token) {
             case ENDMARKER: return "end-of-file";
