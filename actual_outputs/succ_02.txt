@@ -1,0 +1,11 @@
+Success: no syntax error is found.
+
+Following is the indentation-updated source code:
+=================================================
+num main()
+{
+    num x;
+    x <- 1;
+    print 1;
+    return 1;
+}

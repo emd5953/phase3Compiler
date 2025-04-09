@@ -104,12 +104,12 @@ public class Parser {
     public String Match(int token_type) throws Exception {
         if (_token.type == LEXERROR) {
             throw new Exception("Lexical error on \"" + _token.lexeme 
-                + "\" at line " + _lexer.lineno + ", col " + _token.col);
+                + "\" at " + _lexer.lineno + ":" + _token.col + ".");
         }
         String lexeme = _token.lexeme;
         if (_token.type != token_type) {
-            throw new Exception("\"" + tokenToString(token_type) + "\" expected instead of \""
-                + tokenToString(_token.type) + "\" at line " + _lexer.lineno + ", col " + _token.col);
+            throw new Exception("\"" + tokenToString(token_type) + "\" is expected instead of \""
+                + _token.lexeme + "\" at " + _lexer.lineno + ":" + _token.col + ".");
         }
         if (_token.type != ENDMARKER) {
             Advance();
@@ -130,23 +130,58 @@ public class Parser {
         }
     }
     
-    // program -> decl_list ENDMARKER
     public ParseTree.Program program() throws Exception {
+        // Parse all function declarations
         List<ParseTree.FuncDecl> funcs = decl_list();
-        Match(ENDMARKER);  // End of file
+    
+        // If there's another token here, we want "No matching production in program..."
+        if (_token.type != ENDMARKER) {
+            throw new Exception("No matching production in program at " 
+                                + _lexer.lineno + ":" + _token.col + ".");
+        }
+    
+        // Otherwise, consume the ENDMARKER normally
+        Match(ENDMARKER);
+    
+        // Build the parse-tree node
         return new ParseTree.Program(funcs);
     }
     
-    // decl_list -> fun_decl decl_list | ε
+    
     public List<ParseTree.FuncDecl> decl_list() throws Exception {
         List<ParseTree.FuncDecl> list = new ArrayList<>();
-        // We loop as long as the next token can start a fun_decl (i.e. type_spec)
+        boolean parsedAny = false;
+    
+        // While the next token is in FIRST(fun_decl) => parse fun_decl
         while (_token.type == NUM || _token.type == BOOL) {
-            ParseTree.FuncDecl fd = fun_decl();
-            list.add(fd);
+            list.add(fun_decl());
+            parsedAny = true;
         }
+    
+        // Now we’ve parsed zero or more fun_decl.
+        // If the next token is not in FOLLOW(decl_list),
+        // decide which error to throw based on whether we parsed anything.
+    
+        if (!isInFollowOfDeclList(_token.type)) {
+            if (!parsedAny) {
+                // We never got a valid fun_decl at all => "program" error
+                throw new Exception("No matching production in program at "
+                                    + _lexer.lineno + ":" + _token.col + ".");
+            } else {
+                // We parsed at least one => "decl_list'" error
+                throw new Exception("No matching production in decl_list' at "
+                                    + _lexer.lineno + ":" + _token.col + ".");
+            }
+        }
+    
         return list;
     }
+    
+    private boolean isInFollowOfDeclList(int tokenType) {
+        // For your grammar, typically just ENDMARKER if program -> decl_list ENDMARKER
+        return (tokenType == ENDMARKER);
+    }
+    
     
     // fun_decl -> type_spec IDENT LPAREN params RPAREN BEGIN local_decls stmt_list END
     public ParseTree.FuncDecl fun_decl() throws Exception {
@@ -199,7 +234,8 @@ public class Parser {
     // param -> type_spec IDENT
     public List<ParseTree.Param> params() throws Exception {
         List<ParseTree.Param> list = new ArrayList<>();
-        // If next token can start a param (i.e. type_spec), parse param_list
+    
+        // If next token can start a param_list (NUM or BOOL), parse it:
         if (_token.type == NUM || _token.type == BOOL) {
             list.add(param());
             while (_token.type == COMMA) {
@@ -207,12 +243,38 @@ public class Parser {
                 list.add(param());
             }
         }
+        else {
+            // If we're not seeing NUM/BOOL, we check if it's in FOLLOW(params).
+            // For "params -> param_list | ε", typical FOLLOW(params) = { RPAREN } 
+            // because fun_decl: "type_spec IDENT ( params ) ... "
+            if (_token.type != RPAREN) {
+                // If not RPAREN, throw the custom message
+                throw new Exception("No matching production in params at "
+                                    + _lexer.lineno + ":" + _token.col);
+            }
+            // otherwise, we do epsilon => return empty list
+        }
+    
         return list;
     }
     
+    
     public ParseTree.Param param() throws Exception {
+        // 1) Check if token can start a type_spec
+        if (_token.type != NUM && _token.type != BOOL) {
+            throw new Exception("No matching production in param at " 
+                                + _lexer.lineno + ":" + _token.col + ".");
+        }
+        // 2) Now parse type_spec
         ParseTree.TypeSpec ts = type_spec();
+    
+        // 3) Check if next token is IDENT
+        if (_token.type != IDENT) {
+            throw new Exception("No matching production in param at " 
+                                + _lexer.lineno + ":" + _token.col + ".");
+        }
         String id = Match(IDENT);
+    
         return new ParseTree.Param(id, ts);
     }
     
@@ -239,12 +301,26 @@ public class Parser {
     // stmt_list'-> stmt stmt_list' | ϵ
     public List<ParseTree.Stmt> stmt_list() throws Exception {
         List<ParseTree.Stmt> list = new ArrayList<>();
+    
+        // While the token can start a valid statement, parse it.
         while (isStartOfStmt(_token.type)) {
-            ParseTree.Stmt s = stmt();
-            list.add(s);
+            list.add(stmt());
         }
+    
+        // Now, after reading all the statements, the token must be in FOLLOW(stmt_list).
+        // For a compound statement, FOLLOW(stmt_list) might be { END, ELSE }.
+        if (!isInFollowOfStmtList(_token.type)) {
+            throw new Exception("No matching production in stmt_list' at "
+                                + _lexer.lineno + ":" + _token.col + ".");
+        }
+    
         return list;
     }
+
+    private boolean isInFollowOfStmtList(int t) {
+        return (t == END);
+    }
+    
     
     private boolean isStartOfStmt(int t) {
         // e.g. IDENT, PRINT, RETURN, IF, WHILE, BEGIN
@@ -424,8 +500,8 @@ public class Parser {
                 return new ParseTree.FactorNew(p, arrSize);
             }
             default:
-                throw new Exception("No matching production in factor at line "
-                        + _lexer.lineno + ", col " + _token.col);
+                throw new Exception("No matching production in factor at "
+                        + _lexer.lineno + ":" + _token.col + ".");
         }
     }
     
@@ -466,13 +542,22 @@ public class Parser {
     // arg_list'-> COMMA expr arg_list' | ϵ
     // ------------------------------------------------------------------
     public List<ParseTree.Arg> args() throws Exception {
+        // If next token can start an expr, parse arg_list
         if (isStartOfExpr(_token.type)) {
             return arg_list();
-        } else {
-            // epsilon
+        }
+        else {
+            // If we don't have an expression, check if token is in FOLLOW(args).
+            // Usually FOLLOW(args) is { RPAREN } (because we do `LPAREN args RPAREN`).
+            if (_token.type != RPAREN) {
+                throw new Exception("No matching production in args at "
+                                    + _lexer.lineno + ":" + _token.col);
+            }
+            // Otherwise ε => no arguments
             return new ArrayList<>();
         }
     }
+    
     
     public List<ParseTree.Arg> arg_list() throws Exception {
         List<ParseTree.Arg> list = new ArrayList<>();
