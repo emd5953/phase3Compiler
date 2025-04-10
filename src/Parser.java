@@ -33,8 +33,8 @@ public class Parser {
     public static final int IF         = 29;   // "if"
     public static final int COMMA      = 30;   // ","
     public static final int ELSE       = 31;   // "else"
-    public static final int WHILE      = 32;   // "while"
-    
+    public static final int WHILE      = 32;   // "while" (define as needed)
+
     public static final int RELOP  = 33;  // e.g. <, >, <=, >=, =, <>
     public static final int EXPROP = 34;  // e.g. +, -, or
     public static final int TERMOP = 35;  // e.g. *, /, and
@@ -64,7 +64,7 @@ public class Parser {
     public ParserVal  yylval;
     private Token     _token;
     private Lexer     _lexer;
-    private Compiler  _compiler;
+    private Compiler  _compiler;  // optional if you have a Compiler class
     public ParseTree.Program _parsetree;
     public String     _errormsg;
 
@@ -93,6 +93,8 @@ public class Parser {
 
         String text = _lexer.yytext();
         if (token_type == LEXERROR && text.equals(".")) {
+            // If your lexer returns LEXERROR for "." 
+            // but you want to treat it as DOT:
             token_type = DOT;
         }
 
@@ -101,13 +103,13 @@ public class Parser {
 
     public String Match(int token_type) throws Exception {
         if (_token.type == LEXERROR) {
-            throw new ParseException("Lexical error on \"" + _token.lexeme + "\"", 
-                                     _lexer.lineno, _token.col);
+            throw new Exception("Lexical error on \"" + _token.lexeme 
+                + "\" at " + _lexer.lineno + ":" + _token.col + ".");
         }
         String lexeme = _token.lexeme;
         if (_token.type != token_type) {
-            throw new ParseException("\"" + tokenToString(token_type) + "\" is expected instead of \""
-                + _token.lexeme + "\"", _lexer.lineno, _token.col);
+            throw new Exception("\"" + tokenToString(token_type) + "\" is expected instead of \""
+                + _token.lexeme + "\" at " + _lexer.lineno + ":" + _token.col + ".");
         }
         if (_token.type != ENDMARKER) {
             Advance();
@@ -118,30 +120,30 @@ public class Parser {
     /* ------------------------------------------------------------------
        The Parse Entry Point
        ------------------------------------------------------------------ */
-       public int yyparse() {
+       public int yyparse() throws Exception {
         try {
             _parsetree = program();
             return 0; // success
-        } catch (ParseException pe) {
-            _errormsg = pe.getMessage(); // Just use the message from the exception.
-            return -1; // failure
         } catch (Exception ex) {
             _errormsg = ex.getMessage();
-            return -1;
+            return -1; // failure
         }
     }
-    
     
     public ParseTree.Program program() throws Exception {
         // Parse all function declarations
         List<ParseTree.FuncDecl> funcs = decl_list();
     
-        // If there's another token here, we want a top-level error:
+        // If there's another token here, we want "No matching production in program..."
         if (_token.type != ENDMARKER) {
-            throw new ParseException("program", _lexer.lineno, _token.col, true);
+            throw new Exception("No matching production in program at " 
+                                + _lexer.lineno + ":" + _token.col + ".");
         }
+    
+        // Otherwise, consume the ENDMARKER normally
         Match(ENDMARKER);
     
+        // Build the parse-tree node
         return new ParseTree.Program(funcs);
     }
     
@@ -150,18 +152,25 @@ public class Parser {
         List<ParseTree.FuncDecl> list = new ArrayList<>();
         boolean parsedAny = false;
     
-        // While the next token is in FIRST(fun_decl) (NUM or BOOL), parse fun_decl.
+        // While the next token is in FIRST(fun_decl) => parse fun_decl
         while (_token.type == NUM || _token.type == BOOL) {
             list.add(fun_decl());
             parsedAny = true;
         }
     
-        // After parsing, if the token is not in FOLLOW(decl_list)...
+        // Now we’ve parsed zero or more fun_decl.
+        // If the next token is not in FOLLOW(decl_list),
+        // decide which error to throw based on whether we parsed anything.
+    
         if (!isInFollowOfDeclList(_token.type)) {
             if (!parsedAny) {
-                throw new ParseException("program", _lexer.lineno, _token.col, true);
+                // We never got a valid fun_decl at all => "program" error
+                throw new Exception("No matching production in program at "
+                                    + _lexer.lineno + ":" + _token.col + ".");
             } else {
-                throw new ParseException("decl_list'", _lexer.lineno, _token.col, true);
+                // We parsed at least one => "decl_list'" error
+                throw new Exception("No matching production in decl_list' at "
+                                    + _lexer.lineno + ":" + _token.col + ".");
             }
         }
     
@@ -169,7 +178,7 @@ public class Parser {
     }
     
     private boolean isInFollowOfDeclList(int tokenType) {
-        // For program -> decl_list ENDMARKER, valid follow is ENDMARKER.
+        //  typically just ENDMARKER if program -> decl_list ENDMARKER
         return (tokenType == ENDMARKER);
     }
     
@@ -177,25 +186,26 @@ public class Parser {
     // fun_decl -> type_spec IDENT LPAREN params RPAREN BEGIN local_decls stmt_list END
     public ParseTree.FuncDecl fun_decl() throws Exception {
         ParseTree.TypeSpec ts = type_spec();
-        String funcName = Match(IDENT);
+        String funcName       = Match(IDENT);
         Match(LPAREN);
         List<ParseTree.Param> ps = params();
         Match(RPAREN);
         Match(BEGIN);
         List<ParseTree.LocalDecl> locals = local_decls();
-        List<ParseTree.Stmt> stmts = stmt_list();
+        List<ParseTree.Stmt> stmts       = stmt_list();
         Match(END);
         return new ParseTree.FuncDecl(funcName, ts, ps, locals, stmts);
     }
     
     // type_spec -> prim_type type_spec'
+    // prim_type -> NUM | BOOL
+    // type_spec'-> LBRACKET RBRACKET | ε
     public ParseTree.TypeSpec type_spec() throws Exception {
         ParseTree.PrimType base = prim_type();
         ParseTree.TypeSpec_ arrayPart = type_spec_prime();
         return new ParseTree.TypeSpec(base, arrayPart);
     }
     
-    // prim_type -> NUM | BOOL
     public ParseTree.PrimType prim_type() throws Exception {
         if (_token.type == NUM) {
             Match(NUM);
@@ -204,61 +214,75 @@ public class Parser {
             Match(BOOL);
             return new ParseTree.PrimTypeBool();
         }
-        throw new ParseException("Expected 'num' or 'bool'", _lexer.lineno, _token.col);
+        throw new Exception("Expected 'num' or 'bool' at line "
+                + _lexer.lineno + ", col " + _token.col + ".");
     }
     
-    // type_spec' -> LBRACKET RBRACKET | ε
     public ParseTree.TypeSpec_ type_spec_prime() throws Exception {
         if (_token.type == LBRACKET) {
             Match(LBRACKET);
             Match(RBRACKET);
             return new ParseTree.TypeSpec_Array();
         }
-        return new ParseTree.TypeSpec_Value(); // ε production
+        // epsilon
+        return new ParseTree.TypeSpec_Value();
     }
     
-    // params -> param_list | ε
+    // params -> param_list | ϵ
+    // param_list -> param param_list'
+    // param_list'-> COMMA param param_list' | ϵ
+    // param -> type_spec IDENT
     public List<ParseTree.Param> params() throws Exception {
         List<ParseTree.Param> list = new ArrayList<>();
+    
+        // If next token can start a param_list (NUM or BOOL), parse it:
         if (_token.type == NUM || _token.type == BOOL) {
             list.add(param());
             while (_token.type == COMMA) {
                 Match(COMMA);
                 list.add(param());
             }
-        } else {
-            if (_token.type != RPAREN) {
-                throw new ParseException("params", _lexer.lineno, _token.col, true);
-            }
         }
+        else {
+            // If we're not seeing NUM/BOOL, we check if it's in FOLLOW(params).
+            // For "params -> param_list | ε", typical FOLLOW(params) = { RPAREN } 
+            // because fun_decl: "type_spec IDENT ( params ) ... "
+            if (_token.type != RPAREN) {
+                // If not RPAREN, throw the custom message
+                throw new Exception("No matching production in params at "
+                                    + _lexer.lineno + ":" + _token.col + ".");
+            }
+            // otherwise, we do epsilon => return empty list
+        }
+    
         return list;
     }
     
-    // param_list -> param param_list' | ε
-    public List<ParseTree.Param> param_list() throws Exception {
-        // Not used explicitly if params() handles both cases.
-        if (_token.type == NUM || _token.type == BOOL)
-            return params();
-        else 
-            return new ArrayList<ParseTree.Param>();
-    }
     
-    // param -> type_spec IDENT
     public ParseTree.Param param() throws Exception {
+        // 1) Check if token can start a type_spec
         if (_token.type != NUM && _token.type != BOOL) {
-            throw new ParseException("param", _lexer.lineno, _token.col, true);
+            throw new Exception("No matching production in param at " 
+                                + _lexer.lineno + ":" + _token.col + ".");
         }
+        // 2) Now parse type_spec
         ParseTree.TypeSpec ts = type_spec();
+    
+        // 3) Check if next token is IDENT
         if (_token.type != IDENT) {
-            throw new ParseException("param", _lexer.lineno, _token.col, true);
+            throw new Exception("No matching production in param at " 
+                                + _lexer.lineno + ":" + _token.col + ".");
         }
         String id = Match(IDENT);
+    
         return new ParseTree.Param(id, ts);
     }
     
     // local_decls -> local_decls'
+    // local_decls'-> local_decl local_decls' | ϵ
     public List<ParseTree.LocalDecl> local_decls() throws Exception {
         List<ParseTree.LocalDecl> list = new ArrayList<>();
+        // Loop while we see a type-spec (NUM or BOOL)
         while (_token.type == NUM || _token.type == BOOL) {
             list.add(local_decl());
         }
@@ -274,25 +298,34 @@ public class Parser {
     }
     
     // stmt_list -> stmt_list'
+    // stmt_list'-> stmt stmt_list' | ϵ
     public List<ParseTree.Stmt> stmt_list() throws Exception {
         List<ParseTree.Stmt> list = new ArrayList<>();
+    
+        // While the token can start a valid statement, parse it.
         while (isStartOfStmt(_token.type)) {
             list.add(stmt());
         }
+    
+        // Now, after reading all the statements, the token must be in FOLLOW(stmt_list).
+        // For a compound statement, FOLLOW(stmt_list) might be { END, ELSE }.
         if (!isInFollowOfStmtList(_token.type)) {
-            throw new ParseException("stmt_list'", _lexer.lineno, _token.col, true);
+            throw new Exception("No matching production in stmt_list' at "
+                                + _lexer.lineno + ":" + _token.col + ".");
         }
+    
         return list;
     }
-    
+
     private boolean isInFollowOfStmtList(int t) {
-        // For compound_stmt -> BEGIN local_decls stmt_list END, follow is { END }
         return (t == END);
     }
     
+    
     private boolean isStartOfStmt(int t) {
-        return (t == IDENT || t == PRINT || t == RETURN ||
-                t == IF || t == WHILE || t == BEGIN);
+        // e.g. IDENT, PRINT, RETURN, IF, WHILE, BEGIN
+        return (t == IDENT || t == PRINT || t == RETURN
+             || t == IF    || t == WHILE || t == BEGIN);
     }
     
     // stmt -> assign_stmt | print_stmt | return_stmt | if_stmt | while_stmt | compound_stmt
@@ -311,7 +344,8 @@ public class Parser {
             case BEGIN:
                 return compound_stmt();
             default:
-                throw new ParseException("stmt", _lexer.lineno, _token.col, true);
+                throw new Exception("No matching production in stmt at line "
+                        + _lexer.lineno + ", col " + _token.col + ".");
         }
     }
     
@@ -346,80 +380,92 @@ public class Parser {
         Match(LPAREN);
         ParseTree.Expr cond = expr();
         Match(RPAREN);
-        ParseTree.Stmt thenStmt = stmt();
+        ParseTree.Stmt thenS = stmt();
         Match(ELSE);
-        ParseTree.Stmt elseStmt = stmt();
-        return new ParseTree.StmtIf(cond, thenStmt, elseStmt);
+        ParseTree.Stmt elseS = stmt();
+        return new ParseTree.StmtIf(cond, thenS, elseS);
     }
     
     // while_stmt -> WHILE LPAREN expr RPAREN stmt
     public ParseTree.Stmt while_stmt() throws Exception {
         Match(WHILE);
         Match(LPAREN);
-        ParseTree.Expr cond = expr();
+        ParseTree.Expr c = expr();
         Match(RPAREN);
         ParseTree.Stmt body = stmt();
-        return new ParseTree.StmtWhile(cond, body);
+        return new ParseTree.StmtWhile(c, body);
     }
     
     // compound_stmt -> BEGIN local_decls stmt_list END
     public ParseTree.Stmt compound_stmt() throws Exception {
         Match(BEGIN);
         List<ParseTree.LocalDecl> ldecls = local_decls();
-        List<ParseTree.Stmt> stmts = stmt_list();
+        List<ParseTree.Stmt> stmts       = stmt_list();
         Match(END);
         return new ParseTree.StmtCompound(ldecls, stmts);
     }
     
-    // expr -> term expr'
+    // ------------------------------------------------------------------
+    //  expr  -> term expr'
+    //  expr' -> EXPROP term expr'
+    //         | RELOP  term expr'
+    //         | ε
+    // ------------------------------------------------------------------
     public ParseTree.Expr expr() throws Exception {
         ParseTree.Term t = term();
-        ParseTree.Expr_ e_ = expr_();
+        ParseTree.Expr_ e_ = expr_prime();
         return new ParseTree.Expr(t, e_);
     }
     
-    // expr' -> EXPROP term expr' | RELOP term expr' | ε
-    public ParseTree.Expr_ expr_() throws Exception {
+    public ParseTree.Expr_ expr_prime() throws Exception {
+        // If next token is EXPROP or RELOP => parse it
         if (_token.type == EXPROP || _token.type == RELOP) {
             String op = _token.lexeme;
-            Match(_token.type);
+            Match(_token.type); // consume EXPROP or RELOP
             ParseTree.Term t2 = term();
-            ParseTree.Expr_ e2 = expr_();
+            ParseTree.Expr_ e2 = expr_prime();
             return new ParseTree.Expr_(op, t2, e2);
         }
+        // Epsilon
         return new ParseTree.Expr_();
     }
     
-    // term -> factor term'
+    // ------------------------------------------------------------------
+    //  term  -> factor term'
+    //  term' -> TERMOP factor term'
+    //         | ε
+    // ------------------------------------------------------------------
     public ParseTree.Term term() throws Exception {
-        ParseTree.Factor f = factor();
-        ParseTree.Term_ t_ = term_();
+        ParseTree.Factor f  = factor();
+        ParseTree.Term_ t_  = term_prime();
         return new ParseTree.Term(f, t_);
     }
     
-    // term' -> TERMOP factor term' | ε
-    public ParseTree.Term_ term_() throws Exception {
+    public ParseTree.Term_ term_prime() throws Exception {
         if (_token.type == TERMOP) {
             String op = _token.lexeme;
             Match(TERMOP);
             ParseTree.Factor f2 = factor();
-            ParseTree.Term_ t2 = term_();
+            ParseTree.Term_ t2  = term_prime();
             return new ParseTree.Term_(op, f2, t2);
         }
+        // Epsilon
         return new ParseTree.Term_();
     }
     
-    // factor -> IDENT factor'
-    //         | LPAREN expr RPAREN
-    //         | NUM_LIT
-    //         | BOOL_LIT
-    //         | NEW prim_type LBRACKET expr RBRACKET
-    //         | FLOAT_LIT (optional)
+    // ------------------------------------------------------------------
+    //  factor -> IDENT factor'
+    //          | LPAREN expr RPAREN
+    //          | NUM_LIT
+    //          | BOOL_LIT
+    //          | NEW prim_type LBRACKET expr RBRACKET
+    //  (FLOAT_LIT is not in the original grammar, but included here if you want it.)
+    // ------------------------------------------------------------------
     public ParseTree.Factor factor() throws Exception {
         switch (_token.type) {
             case IDENT: {
                 String id = Match(IDENT);
-                ParseTree.Factor_ ext = factor_();
+                ParseTree.Factor_ ext = factor_prime();
                 return new ParseTree.FactorIdentExt(id, ext);
             }
             case LPAREN: {
@@ -429,37 +475,42 @@ public class Parser {
                 return new ParseTree.FactorParen(e);
             }
             case NUM_LIT: {
-                String numText = Match(NUM_LIT);
-                double numVal = Double.parseDouble(numText);
+                String numtext = Match(NUM_LIT);
+                double numVal = Double.parseDouble(numtext);
                 return new ParseTree.FactorNumLit(numVal);
             }
             case BOOL_LIT: {
-                String boolText = Match(BOOL_LIT);
-                return new ParseTree.FactorBoolLit(boolText.equals("true"));
+                String btext = Match(BOOL_LIT);
+                boolean b = btext.equals("true");
+                return new ParseTree.FactorBoolLit(b);
             }
             case FLOAT_LIT: {
+                // Optional extension
                 String ft = Match(FLOAT_LIT);
                 double fv = Double.parseDouble(ft);
                 return new ParseTree.FactorNumLit(fv);
             }
             case NEW: {
                 Match(NEW);
-                // Use PrimType here since prim_type() returns a PrimType
                 ParseTree.PrimType p = prim_type();
                 Match(LBRACKET);
                 ParseTree.Expr arrSize = expr();
                 Match(RBRACKET);
-                // Assuming the constructor of FactorNew expects (ParseTree.PrimType, ParseTree.Expr)
                 return new ParseTree.FactorNew(p, arrSize);
             }
-            
             default:
-                throw new ParseException("factor", _lexer.lineno, _token.col, true);
+                throw new Exception("No matching production in factor at "
+                        + _lexer.lineno + ":" + _token.col + ".");
         }
     }
     
-    // factor' -> LPAREN args RPAREN | LBRACKET expr RBRACKET | DOT SIZE | ε
-    public ParseTree.Factor_ factor_() throws Exception {
+    // ------------------------------------------------------------------
+    // factor' -> LPAREN args RPAREN
+    //          | LBRACKET expr RBRACKET
+    //          | DOT SIZE
+    //          | ϵ
+    // ------------------------------------------------------------------
+    public ParseTree.Factor_ factor_prime() throws Exception {
         switch (_token.type) {
             case LPAREN: {
                 Match(LPAREN);
@@ -475,56 +526,67 @@ public class Parser {
             }
             case DOT: {
                 Match(DOT);
-                Match(SIZE);
+                Match(SIZE);  // e.g. "size"
                 return new ParseTree.FactorIdent_DotSize();
             }
             default:
+                // epsilon
                 return new ParseTree.FactorIdent_Eps();
         }
     }
     
-    // args -> arg_list | ε
+    // ------------------------------------------------------------------
+    // args -> arg_list | ϵ
+    // arg_list -> expr arg_list'
+    // arg_list'-> COMMA expr arg_list' | ϵ
+    // ------------------------------------------------------------------
     public List<ParseTree.Arg> args() throws Exception {
+        // If next token can start an expr, parse arg_list
         if (isStartOfExpr(_token.type)) {
             return arg_list();
-        } else {
+        }
+        else {
+            // If we don't have an expression, check if token is in FOLLOW(args).
+            // Usually FOLLOW(args) is { RPAREN } (because we do `LPAREN args RPAREN`).
             if (_token.type != RPAREN) {
-                throw new ParseException("args", _lexer.lineno, _token.col, true);
+                throw new Exception("No matching production in args at "
+                                    + _lexer.lineno + ":" + _token.col + ".");
             }
-            return new ArrayList<ParseTree.Arg>();
+            // Otherwise ε => no arguments
+            return new ArrayList<>();
         }
     }
     
-    // arg_list -> expr arg_list'
-    public List<ParseTree.Arg> arg_list() throws Exception {
-        List<ParseTree.Arg> list = new ArrayList<>();
-        ParseTree.Expr expr = expr();
-        list.add(new ParseTree.Arg(expr));
-        list.addAll(arg_list_());
-        return list;
-    }
     
-    // arg_list' -> COMMA expr arg_list' | ε
-    public List<ParseTree.Arg> arg_list_() throws Exception {
-        switch(_token.type) {
-            case COMMA:
-                Match(COMMA);
-                ParseTree.Expr expr = expr();
-                List<ParseTree.Arg> rest = arg_list_();
-                rest.add(0, new ParseTree.Arg(expr));
-                return rest;
-            case RPAREN:
-                return new ArrayList<ParseTree.Arg>();
-            default:
-                throw new ParseException("arg_list'", _lexer.lineno, _token.col, true);
+// arg_list -> expr arg_list'
+public List<ParseTree.Arg> arg_list() throws Exception {
+    List<ParseTree.Arg> list = new ArrayList<>();
+    // Parse the first argument
+    ParseTree.Expr firstExpr = expr();
+    list.add(new ParseTree.Arg(firstExpr));
+    // Continue with the rest of the arguments
+    while (_token.type == COMMA) {
+        Match(COMMA);
+        // Check that there is a valid expression to follow
+        if (!isStartOfExpr(_token.type)) {
+            // Instead of letting factor() complain later, throw your custom error message now.
+            throw new Exception("No matching production in expr at " 
+                                + _lexer.lineno + ":" + _token.col + ".");
         }
+        ParseTree.Expr nextExpr = expr();
+        list.add(new ParseTree.Arg(nextExpr));
     }
+    return list;
+}
+
     
     private boolean isStartOfExpr(int t) {
-        return (t == LPAREN || t == IDENT || t == NUM_LIT ||
-                t == BOOL_LIT || t == FLOAT_LIT || t == NEW);
+        // E.g. LPAREN, IDENT, NUM_LIT, BOOL_LIT, FLOAT_LIT, NEW
+        return (t == LPAREN || t == IDENT || t == NUM_LIT
+             || t == BOOL_LIT || t == FLOAT_LIT || t == NEW);
     }
     
+ 
     private static String tokenToString(int token) {
         switch (token) {
             case ENDMARKER: return "end-of-file";
@@ -558,4 +620,4 @@ public class Parser {
             default:        return "unknown token (" + token + ")";
         }
     }
-}
+}    

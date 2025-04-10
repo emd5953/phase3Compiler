@@ -1,2 +1,2 @@
 Error: There is syntax error(s).
-No matching production in factor at 6:24.
+No matching production in expr at 6:24.
