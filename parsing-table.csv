@@ -1,0 +1,33 @@
+Non-terminal,NUM,BOOL,IDENT,LPAREN,RPAREN,BEGIN,END,COMMA,SEMI,ENDMARKER,LBRACKET,RBRACKET,PRINT,RETURN,IF,WHILE,ELSE,ASSIGN,NUM_LIT,BOOL_LIT,NEW,EXPROP,RELOP,TERMOP,DOT,SIZE
+program,p→dl,p→dl,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-
+decl_list,dl→dl',dl→dl',-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-
+decl_list',dl'→fd dl',dl'→fd dl',-,-,-,-,-,-,dl'→ϵ,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-
+fun_decl,fd→ts ID LP ps RP BE ld sl EN,same,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-
+params,ps→pl,ps→pl,-,-,ps→ϵ,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-
+param_list,pl→p pl',pl→p pl',-,-,pl→ϵ,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-
+param_list',-,-,-,-,pl'→ϵ,-,-,pl'→COMMA p pl',-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-
+param,p→ts ID,p→ts ID,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-
+type_spec,ts→pt ts',ts→pt ts',-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-
+type_spec',-,-,-,-,-,-,-,-,ts'→ϵ,-,ts'→LB RB,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-
+prim_type,pt→NUM,pt→BOOL,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-
+local_decls,ld→ld',ld→ld',ld→ϵ,-,-,ld→ϵ,ld→ϵ,-,-,-,-,-,ld→ϵ,ld→ϵ,ld→ϵ,ld→ϵ,-,-,-,-,-,-,-,-,-,-
+local_decls',ld'→lc ld',ld'→lc ld',ld'→ϵ,-,-,ld'→ϵ,ld'→ϵ,-,-,-,-,-,ld'→ϵ,ld'→ϵ,ld'→ϵ,ld'→ϵ,-,-,-,-,-,-,-,-,-,-
+local_decl,lc→ts ID SEMI,lc→ts ID SEMI,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-
+stmt_list,-,-,sl→sl',-,-,sl→sl',sl→ϵ,-,-,-,-,-,sl→sl',sl→sl',sl→sl',sl→sl',-,-,-,-,-,-,-,-,-,-
+stmt_list',-,-,sl'→s sl',-,-,sl'→s sl',sl'→ϵ,-,-,-,-,-,sl'→s sl',sl'→s sl',sl'→s sl',sl'→s sl',-,-,-,-,-,-,-,-,-,-
+stmt,-,-,s→as,-,-,s→cs,-,-,-,-,-,-,s→ps,s→rs,s→is,s→ws,-,-,-,-,-,-,-,-,-,-
+assign_stmt,-,-,as→ID ASSIGN e SEMI,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-
+print_stmt,-,-,-,-,-,-,-,-,-,-,-,-,ps→PRINT e SEMI,-,-,-,-,-,-,-,-,-,-,-,-,-
+return_stmt,-,-,-,-,-,-,-,-,-,-,-,-,-,rs→RET e SEMI,-,-,-,-,-,-,-,-,-,-,-,-
+if_stmt,-,-,-,-,-,-,-,-,-,-,-,-,-,-,is→IF LP e RP s ELSE s,-,-,-,-,-,-,-,-,-,-,-
+while_stmt,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,ws→WHILE LP e RP s,-,-,-,-,-,-,-,-,-,-
+compound_stmt,-,-,-,-,-,cs→BE ld sl EN,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-
+expr,e→t e',e→t e',e→t e',e→t e',-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,e→t e',e→t e',e→t e',-,-,-,-,-
+expr',-,-,-,-,-,-,-,-,e'→ϵ,e'→ϵ,-,e'→ϵ,-,-,-,-,-,-,-,-,-,e'→EOP t e',e'→ROP t e',-,-,-
+term,t→f t',t→f t',t→f t',t→f t',-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,t→f t',t→f t',t→f t',-,-,-,-,-
+term',-,-,-,-,-,-,-,-,t'→ϵ,t'→ϵ,-,t'→ϵ,-,-,-,-,-,-,-,-,-,t'→ϵ,t'→ϵ,t'→TOP f t',-,-
+factor,-,-,f→ID f',f→LP e RP,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,f→NL,f→BL,f→NEW pt LB e RB,-,-,-,-,-
+factor',-,-,-,-,-,-,-,-,-,f'→ϵ,-,f'→ϵ,-,-,-,-,-,f'→LP as RP,-,-,-,-,-,-,f'→DOT SIZE,f'→LB e RB
+args,-,-,as→al,-,as→ϵ,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-
+arg_list,-,-,al→e al',-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-
+arg_list',-,-,-,-,al'→ϵ,-,-,al'→COMMA e al',-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-
